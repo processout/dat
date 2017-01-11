@@ -66,7 +66,11 @@ func logSQLError(err error, msg string, statement string, args []interface{}) er
 			return err
 		}
 		if dat.Strict {
-			return logger.Warn(msg, "err", err, "sql", statement, "args", toOutputStr(args))
+			tmp := logger.Warn(msg, "err", err, "sql", statement, "args", toOutputStr(args))
+			if tmp != nil {
+				return tmp
+			}
+			return err
 		}
 		if logger.IsDebug() {
 			logger.Debug(msg, "err", err, "sql", statement, "args", toOutputStr(args))
@@ -74,7 +78,11 @@ func logSQLError(err error, msg string, statement string, args []interface{}) er
 		return err
 	}
 
-	return logger.Error(msg, "err", err, "sql", statement, "args", toOutputStr(args))
+	tmp := logger.Error(msg, "err", err, "sql", statement, "args", toOutputStr(args))
+	if tmp != nil {
+		return tmp
+	}
+	return err
 }
 
 func logExecutionTime(start time.Time, sql string, args []interface{}) {
