@@ -106,8 +106,12 @@
 
 Get it
 
+dat.v1 uses [glide](https://github.com/Masterminds/glide) package dependency manager. 
+Earlier builds relied on gopkg.in which at the time was as good a solution as any.
+Will move to `dep` once it is stable.
+
 ```sh
-go get -u gopkg.in/mgutz/dat.v1/sqlx-runner
+glide get gopkg.in/mgutz/dat.v1/sqlx-runner
 ```
 
 Use it
@@ -503,7 +507,6 @@ result, err := DB.
 result, err = DB.
     DeleteFrom("posts").
     Where("id = $1", otherPost.ID).
-    Limit(1).
     Exec()
 ```
 

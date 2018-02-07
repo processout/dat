@@ -211,3 +211,32 @@ func TestInterpolateValidNullTime(t *testing.T) {
 
 	assert.Equal(t, "SELECT * FROM foo WHERE valid = '"+valid.Time.Format(time.RFC3339Nano)+"'", sql)
 }
+
+func TestInterpolateNonPlaceholdersA(t *testing.T) {
+	sql, _, err := Interpolate("$ $$ $aa $1 $", []interface{}{"value"})
+	assert.NoError(t, err)
+	assert.Equal(t, "$ $$ $aa 'value' $", sql)
+
+	sql, _, err = Interpolate("$ $1$ $aa $1", []interface{}{"value"})
+	assert.NoError(t, err)
+	assert.Equal(t, "$ 'value'$ $aa 'value'", sql)
+}
+
+func TestInterpolateExpression(t *testing.T) {
+	// the following case statement does not work with enums in straight SQL
+	// but with Expression we can use composition
+	//
+	// case when $1 = '' then true else kind = $1 end
+	exp := func(value string) *Expression {
+		if value == "" {
+			return Expr("true")
+		}
+		return Expr("kind = $1", "apple")
+	}
+
+	var nullExp *Expression
+
+	sql, _, err := Interpolate("select * from fruits where $1 and $2 and $3", []interface{}{exp(""), exp("apple"), nullExp})
+	assert.NoError(t, err)
+	assert.Equal(t, "select * from fruits where true and kind = 'apple' and NULL", sql)
+}
