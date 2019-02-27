@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/processout/logxi"
+	"github.com/processout/logxi/lib"
 
 	"github.com/processout/dat"
 	"github.com/processout/dat/kvs"
