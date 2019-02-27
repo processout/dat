@@ -12,7 +12,7 @@ require (
 	github.com/mattn/go-isatty v0.0.1 // indirect
 	github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b
 	github.com/mgutz/jo v0.0.0-20151208164356-0b027231853f
-	github.com/mgutz/logxi v0.0.0-20170321173016-3753102df44e
+	github.com/mgutz/logxi v1.0.1
 	github.com/mgutz/minimist v0.0.0-20151219120022-39eb8cf573ca // indirect
 	github.com/mgutz/str v1.2.0
 	github.com/mgutz/to v0.0.0-20150801172905-2a0bcba06616 // indirect
@@ -26,3 +26,5 @@ require (
 	gopkg.in/godo.v2 v2.0.9
 	gopkg.in/stretchr/testify.v1 v1.1.3
 )
+
+replace github.com/mgutz/logxi => github.com/processout/logxi v1.0.1

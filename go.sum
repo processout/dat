@@ -40,6 +40,7 @@ github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZb
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/pmylund/go-cache v2.0.0+incompatible h1:5ZNJ3XnuQrCjvRXItcjhbD27dVFEk7lVqJHbuI696qc=
 github.com/pmylund/go-cache v2.0.0+incompatible/go.mod h1:hmz95dGvINpbRZGsqPcd7B5xXY5+EKb5PpGhQY3NTHk=
+github.com/processout/logxi v1.0.1/go.mod h1:OAoEPg/r6qVg2jJE4oS7qtTRtfl88SeziiVihsRJDzA=
 github.com/satori/go.uuid v1.0.0 h1:6QDKTa2a+CpXmqIFypEOKZUreVG3iCcrb8vbCkHTDsY=
 github.com/satori/go.uuid v1.0.0/go.mod h1:dA0hQrYB0VpLJoorglMZABFdXlWrHn1NEOzdhQKdks0=
 golang.org/x/crypto v0.0.0-20160518162255-5bcd134fee4d h1:CkklL78uSDyebSDV+zEF7TrTI9P0YDzO1EktwXm0qyI=
