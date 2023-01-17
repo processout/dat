@@ -2,10 +2,12 @@ package runner
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
 	"github.com/jmoiron/sqlx"
+
 	"gopkg.in/mgutz/dat.v1"
 )
 
@@ -35,6 +37,12 @@ func WrapSqlxTx(tx *sqlx.Tx) *Tx {
 	newtx := &Tx{Tx: tx, Queryable: &Queryable{tx}}
 	if dat.Strict {
 		time.AfterFunc(1*time.Minute, func() {
+			defer func() {
+				if r := recover(); r != nil {
+					fmt.Printf("recovered dat error: %s", r)
+				}
+			}()
+
 			if !newtx.IsRollbacked && newtx.state == txPending {
 				panic("A database transaction was not closed!")
 			}
