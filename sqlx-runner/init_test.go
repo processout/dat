@@ -7,11 +7,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/mgutz/logxi"
+	"github.com/processout/logxi/lib"
 
-	"gopkg.in/mgutz/dat.v1"
-	"gopkg.in/mgutz/dat.v1/kvs"
-	"gopkg.in/mgutz/dat.v1/postgres"
+	"github.com/processout/dat"
+	"github.com/processout/dat/kvs"
+	"github.com/processout/dat/postgres"
 )
 
 var testDB *DB
