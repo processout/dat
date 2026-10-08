@@ -56,11 +56,26 @@ func (ex *Execer) Timeout(timeout time.Duration) dat.Execer {
 }
 
 func datQueryID(id string) string {
-	return fmt.Sprintf("--dat:qid=%s", id)
+	return queryIDPrefix + id
 }
 
 func prependDatQueryID(sql string, id string) string {
 	return fmt.Sprintf("%s\n%s", datQueryID(id), sql)
+}
+
+// cancelQuerySQL matches the query ID anywhere in the statement because drivers and tracers
+// may prepend their own comments (e.g. sqlcommenter) before it. The cancelling backend
+// is excluded as its own statement contains the query ID too.
+func cancelQuerySQL(id string) string {
+	return fmt.Sprintf(`
+	SELECT pg_cancel_backend(psa.pid)
+	FROM (
+		SELECT pid
+		FROM pg_stat_activity
+		WHERE query
+		LIKE '%%%s%%'
+		AND pid <> pg_backend_pid()
+	) psa`, datQueryID(id))
 }
 
 // Cancel cancels last query with a queryID. If queryID was not set then
@@ -70,16 +85,7 @@ func (ex *Execer) Cancel() error {
 		return dat.ErrInvalidOperation
 	}
 
-	q := fmt.Sprintf(`
-	SELECT pg_cancel_backend(psa.pid)
-	FROM (
-		SELECT pid
-		FROM pg_stat_activity
-		WHERE query
-		LIKE '%s%%'
-	) psa`, datQueryID(ex.queryID))
-
-	_, err := ex.execSQL(q, nil)
+	_, err := ex.execSQL(cancelQuerySQL(ex.queryID), nil)
 	if err != nil {
 		logger.Error("While trying to cancel a query", err)
 	}
