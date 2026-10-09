@@ -1,6 +1,11 @@
 package runner
 
 import (
+	"database/sql"
+	"database/sql/driver"
+	"fmt"
+	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -100,4 +105,116 @@ func TestTimeoutJSON(t *testing.T) {
 	obj, _ := jo.NewFromBytes(b)
 	assert.Equal(t, "john", obj.AsString("[0].name"))
 	assert.Equal(t, 10, obj.AsInt("[0].age"))
+}
+
+// tracerCommentPrefix mimics a sqlcommenter-style comment that tracing drivers prepend to every statement.
+const tracerCommentPrefix = "/*traceparent='00-0000000000000000000000000000002a-000000000000002a-00'*/ "
+
+const (
+	cancelledQueryTimeout = 50 * time.Millisecond
+	cancelledQuerySleep   = 5 * time.Second
+	backendStopDeadline   = 1 * time.Second
+	backendPollInterval   = 20 * time.Millisecond
+)
+
+// commentPrefixDriver prepends a comment to every statement, so the dat query ID is no longer at the start of
+// the statement text seen in pg_stat_activity.
+type commentPrefixDriver struct {
+	driver.Driver
+}
+
+func (d commentPrefixDriver) Open(name string) (driver.Conn, error) {
+	conn, err := d.Driver.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	return commentPrefixConn{Conn: conn}, nil
+}
+
+// commentPrefixConn only exposes driver.Conn so database/sql always goes through Prepare.
+type commentPrefixConn struct {
+	driver.Conn
+}
+
+func (c commentPrefixConn) Prepare(query string) (driver.Stmt, error) {
+	return c.Conn.Prepare(tracerCommentPrefix + query)
+}
+
+var registerCommentPrefixDriver sync.Once
+
+const commentPrefixDriverName = "dat-comment-prefix"
+
+func newCommentPrefixDB(t *testing.T) *DB {
+	registerCommentPrefixDriver.Do(func() {
+		sql.Register(commentPrefixDriverName, commentPrefixDriver{Driver: sqlDB.Driver()})
+	})
+
+	db, err := sql.Open(commentPrefixDriverName, os.Getenv("DAT_DSN"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { db.Close() })
+
+	return NewDB(db, "postgres")
+}
+
+func countActiveBackends(t *testing.T, marker string) int {
+	var count int
+	err := testDB.SQL(`
+		SELECT count(*)
+		FROM pg_stat_activity
+		WHERE state = 'active'
+		AND pid <> pg_backend_pid()
+		AND query LIKE $1`, "%"+marker+"%").QueryScalar(&count)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return count
+}
+
+func waitForBackendToStop(t *testing.T, marker string) bool {
+	deadline := time.Now().Add(backendStopDeadline)
+	for time.Now().Before(deadline) {
+		if countActiveBackends(t, marker) == 0 {
+			return true
+		}
+		time.Sleep(backendPollInterval)
+	}
+	return false
+}
+
+func TestTimeoutCancelsBackend(t *testing.T) {
+	tests := []struct {
+		name string
+		db   func(t *testing.T) *DB
+	}{
+		{
+			name: "statement starts with query ID",
+			db:   func(*testing.T) *DB { return testDB },
+		},
+		{
+			name: "driver prepends a comment before query ID",
+			db:   newCommentPrefixDB,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			inputMarker := "dat-cancel-" + uuid()
+			db := tt.db(t)
+
+			_, err := db.SQL(fmt.Sprintf("SELECT pg_sleep(%d) -- %s", int(cancelledQuerySleep.Seconds()), inputMarker)).
+				Timeout(cancelledQueryTimeout).
+				Exec()
+
+			assert.Equal(t, dat.ErrTimedout, err)
+			assert.True(t, waitForBackendToStop(t, inputMarker), "query is still running on the server after timeout")
+		})
+	}
+}
+
+func TestCancelQuerySQLDoesNotCancelItself(t *testing.T) {
+	_, err := testDB.SQL(cancelQuerySQL(uuid())).Exec()
+
+	assert.NoError(t, err)
 }
